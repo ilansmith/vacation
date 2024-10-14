@@ -1,0 +1,4 @@
+vacation_days
+*.o
+*.exe
+tags
