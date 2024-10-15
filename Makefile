@@ -1,6 +1,6 @@
 CC=gcc
 CPP=cpp
-CFLAGS=-ansi -Werror -Wall -pedantic-errors
+CFLAGS=-ansi -Werror -Wall -pedantic-errors -std=gnu99
 APP=vacation_days
 
 OBJS=vacation_days.o

@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <getopt.h>
+#include <unistd.h>
 
 #define VACATION_DAYS_PER_YEAR 24 /* my number of annual vacation days */
 #define MAX_VACATION_ACCUMULATION_ALLOWED 36 /* max total number of
@@ -16,6 +18,10 @@
 	(VACATION_HOURS_PER_YEAR / VACATION_DAYS_PER_YEAR)
 
 #define MAX(a, b) (a < b ? b : a)
+
+static int vacation_days_per_year = VACATION_DAYS_PER_YEAR;
+static int max_vacation_accumulation_allowed =
+	MAX_VACATION_ACCUMULATION_ALLOWED;
 
 static char *app_name_get(char *arg)
 {
@@ -32,11 +38,22 @@ static char *app_name_get(char *arg)
 
 static void usage(char *app_name)
 {
-	printf("%s <current-vacation-due>\n", app_name_get(app_name));
+	printf("%s [h] [-a annual-leave] [-m max-accum] "
+		"<current-vacation-due>\n", app_name_get(app_name));
 	printf("\n");
-	printf("\nWhere: <current-vacation-due>\n");
-	printf("       is the number of vacation hours due stated in your "
-		"latest pay slip.\n");
+	printf("\nWhere:\n");
+	printf("  --annual/-a:\n");
+	printf("      amount of annual leave in days (default: %d)\n",
+		VACATION_DAYS_PER_YEAR);
+	printf("  --max/-m:\n");
+	printf("      maximum amount of allowed accumulated leave in days "
+		"(default: %d)\n", MAX_VACATION_ACCUMULATION_ALLOWED);
+	printf("  --help/-h:\n");
+	printf("      print this message and exit\n");
+
+	printf("\n  <current-vacation-due>\n");
+	printf("      the amount of vacation currently due in hours as it is"
+		" stated in your latest pay slip\n");
 }
 
 /* check if a year is a leap year */
@@ -128,7 +145,7 @@ static int calculate_vacation(double payslip_vacation_hours)
 	if (days_due_this_year == -1)
 		return -1;
 
-	days_remaining_this_year = VACATION_DAYS_PER_YEAR -
+	days_remaining_this_year = vacation_days_per_year -
 		days_due_this_year;
 	days_due_accumulated = MAX(0, days_due_total - days_due_this_year);
 
@@ -145,33 +162,89 @@ static int calculate_vacation(double payslip_vacation_hours)
 
 	printf("Expected excess days at end of year: %d\n",
 		MAX(0, days_due_total + days_remaining_this_year -
-			MAX_VACATION_ACCUMULATION_ALLOWED));
+			max_vacation_accumulation_allowed));
 
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
-	char *endptr;
+	char *err;
 	double payslip_vacation_hours;
+	char *optstring = "ha:m:";
+	struct option longopts[] = {
+		{
+			.name = "anual",
+			.val = 'a',
+			.has_arg = required_argument,
+			.flag = NULL,
+		},
+		{
+			.name = "max",
+			.val = 'm',
+			.has_arg = required_argument,
+			.flag = NULL,
+		},
+		{ 0 }
+	};
+	int arg;
+	int argc_expected = 2;
+	int ret = -1;
 
-	if (argc != 2) {
-		usage(argv[0]);
-		return -1;
+	while ((arg = getopt_long(argc, argv, optstring, longopts, NULL)) !=
+			-1) {
+		switch (arg) {
+		case 'h':
+			ret = 0;
+			goto show_usage;
+			break;
+		case 'a':
+			vacation_days_per_year = strtol(optarg, &err, 10);
+			if (*err) {
+				printf("Invalid agrument for --anual/-a: %s\n",
+					argv[optind]);
+				usage(argv[0]);
+				goto show_usage;
+			}
+			argc_expected += 2;
+			break;
+		case 'm':
+			max_vacation_accumulation_allowed = strtol(optarg,
+				&err, 10);
+			if (*err) {
+				printf("Invalid agrument for --max/-m: %s\n",
+					argv[optind]);
+				usage(argv[0]);
+				goto show_usage;
+			}
+			argc_expected += 2;
+			break;
+		}
 	}
 
-	payslip_vacation_hours = strtod(argv[1], &endptr);
-	if (*endptr) {
-		printf("Invalid agrument: %s\n", argv[1]);
-		usage(argv[0]);
-		return -1;
+	if (argc != argc_expected || max_vacation_accumulation_allowed <
+			vacation_days_per_year) {
+		goto show_usage;
 	}
 
+	payslip_vacation_hours = strtod(argv[argc_expected - 1], &err);
+	if (*err) {
+		printf("Invalid agrument: %s\n", argv[argc_expected - 1]);
+		goto show_usage;
+	}
+
+	printf("aunual = %d, max = %d, hours = %lf\n",vacation_days_per_year,
+		max_vacation_accumulation_allowed, payslip_vacation_hours);
+	return 0;
 	if (calculate_vacation(payslip_vacation_hours)) {
 		printf("Error in vacation calculation\n");
 		return -1;
 	}
 
 	return 0;
+
+show_usage:
+	usage(argv[0]);
+	return ret;
 }
 
