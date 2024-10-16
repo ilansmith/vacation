@@ -12,16 +12,7 @@
 #define MONTHS_IN_YEAR 12
 #define WORK_DAY_IN_HOURS 8.416666666
 
-#define VACATION_HOURS_PER_YEAR (VACATION_DAYS_PER_YEAR * WORK_DAY_IN_HOURS)
-#define VACATION_DAYS_PER_MONTH (VACATION_DAYS_PER_YEAR / MONTHS_IN_YEAR)
-#define VACATION_HOURS_PER_DAY \
-	(VACATION_HOURS_PER_YEAR / VACATION_DAYS_PER_YEAR)
-
 #define MAX(a, b) (a < b ? b : a)
-
-static int vacation_days_per_year = VACATION_DAYS_PER_YEAR;
-static int max_vacation_accumulation_allowed =
-	MAX_VACATION_ACCUMULATION_ALLOWED;
 
 static char *app_name_get(char *arg)
 {
@@ -48,6 +39,8 @@ static void usage(char *app_name)
 	printf("  --max/-m:\n");
 	printf("      maximum amount of allowed accumulated leave in days "
 		"(default: %d)\n", MAX_VACATION_ACCUMULATION_ALLOWED);
+	printf("      this value cannot be greater than the total amount of "
+		"annual leave\n");
 	printf("  --help/-h:\n");
 	printf("      print this message and exit\n");
 
@@ -100,47 +93,51 @@ static int get_year_month_day(int *year, int *month, int *day)
 	return 0;
 }
 
-static int vacation_days_this_month(void)
+static int vacation_days_this_month(int vacation_days_per_year)
 {
 	int day;
 	int month;
 	int year;
 	int days_this_month;
+	int vacation_days_per_month = vacation_days_per_year / MONTHS_IN_YEAR;
 
 	if (get_year_month_day(&year, &month, &day))
 		return -1;
 
 	days_this_month = days_in_month(month, year);
 
-	return (int)(((double)day / days_this_month) *
-		VACATION_DAYS_PER_MONTH);
+	return (int)(((double)day / days_this_month) * vacation_days_per_month);
 }
 
-static int vacation_days_since_start_of_year(void)
+static int vacation_days_since_start_of_year(int vacation_days_per_year)
 {
 	int day;
 	int month;
 	int year;
+	int vacation_days_per_month = vacation_days_per_year / MONTHS_IN_YEAR;
 
 	if (get_year_month_day(&year, &month, &day))
 		return -1;
 
 	return (int)((month - 1 +
 		((double)day / days_in_month(month, year))) *
-		VACATION_DAYS_PER_MONTH);
+		vacation_days_per_month);
 }
 
-static int calculate_vacation(double payslip_vacation_hours)
+static int calculate_vacation(int vacation_days_per_year,
+		int max_vacation_accumulation_allowed,
+		double payslip_vacation_hours)
 {
 	int days_due_total;
 	int days_due_this_year;
 	int days_remaining_this_year;
 	int days_due_accumulated;
 
-	days_due_total = (int)(payslip_vacation_hours /
-		VACATION_HOURS_PER_DAY) + vacation_days_this_month();
+	days_due_total = (int)(payslip_vacation_hours / WORK_DAY_IN_HOURS) +
+		vacation_days_this_month(vacation_days_per_year);
 
-	days_due_this_year = vacation_days_since_start_of_year();
+	days_due_this_year =
+		vacation_days_since_start_of_year(vacation_days_per_year);
 
 	if (days_due_this_year == -1)
 		return -1;
@@ -169,7 +166,8 @@ static int calculate_vacation(double payslip_vacation_hours)
 
 int main(int argc, char **argv)
 {
-	char *err;
+	int vacation_days_per_year;
+	int max_vacation_accumulation_allowed;
 	double payslip_vacation_hours;
 	char *optstring = "ha:m:";
 	struct option longopts[] = {
@@ -187,9 +185,13 @@ int main(int argc, char **argv)
 		},
 		{ 0 }
 	};
+	char *err;
 	int arg;
 	int argc_expected = 2;
 	int ret = -1;
+
+	vacation_days_per_year = VACATION_DAYS_PER_YEAR;
+	max_vacation_accumulation_allowed = MAX_VACATION_ACCUMULATION_ALLOWED;
 
 	while ((arg = getopt_long(argc, argv, optstring, longopts, NULL)) !=
 			-1) {
@@ -233,10 +235,12 @@ int main(int argc, char **argv)
 		goto show_usage;
 	}
 
-	printf("aunual = %d, max = %d, hours = %lf\n",vacation_days_per_year,
+	printf("aunual = %d, max = %d, hours = %.2lf\n",vacation_days_per_year,
 		max_vacation_accumulation_allowed, payslip_vacation_hours);
-	return 0;
-	if (calculate_vacation(payslip_vacation_hours)) {
+
+	if (calculate_vacation(vacation_days_per_year,
+			max_vacation_accumulation_allowed,
+			payslip_vacation_hours)) {
 		printf("Error in vacation calculation\n");
 		return -1;
 	}
