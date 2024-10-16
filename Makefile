@@ -3,7 +3,7 @@ CPP=cpp
 CFLAGS=-ansi -Werror -Wall -pedantic-errors -std=gnu99
 APP=vacation_days
 
-OBJS=vacation_days.o
+OBJS=vacation.o vacation_days.o
 
 ifeq ($(DEBUG),y)
   CFLAGS+=-O0 -g

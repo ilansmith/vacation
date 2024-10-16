@@ -5,22 +5,16 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#define VACATION_DAYS_PER_YEAR 24 /* my number of annual vacation days */
-#define MAX_VACATION_ACCUMULATION_ALLOWED 36 /* max total number of
+#include "vacation.h"
+
+#define VACATION_DAYS_PER_YEAR 24 /* default number of annual vacation days */
+#define MAX_VACATION_ACCUMULATION_ALLOWED 36 /* max number of permitted 
 						accumulated vacation days
 						permitted by the company */
-#define MONTHS_IN_YEAR 12
-#define WORK_DAY_IN_HOURS 8.416666666
-
-#define MAX(a, b) (a < b ? b : a)
-
-struct vacation_stats {
-	int days_due_total;
-	int days_due_this_year;
-	int days_remaining_this_year;
-	int days_due_accumulated;
-	int total_due_at_end_of_year;
-	int expected_excess_at_end_of_year;
+enum action {
+	ACTION_CALCULATE,
+	ACTION_HELP,
+	ACTION_INPUT_ERROR,
 };
 
 static char *app_name_get(char *arg)
@@ -58,108 +52,6 @@ static void usage(char *app_name)
 		" stated in your latest pay slip\n");
 }
 
-/* check if a year is a leap year */
-static int is_leap_year(int year)
-{
-	return (!(year % 4) && (year % 100)) || !(year % 400) ? 1 : 0;
-}
-
-/* return the number of days in a month for a given year */
-static int days_in_month(int month, int year)
-{
-	int days_in_months[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30,
-		31 };
-
-	if (month == 2 && is_leap_year(year)) {
-		return 29; /* February in a leap year */
-	}
-
-	return days_in_months[month - 1];
-}
-
-static int get_year_month_day(int *year, int *month, int *day)
-{
-	int internal_day, *pday;
-	int internal_month, *pmonth;
-	int internal_year, *pyear;
-
-	/* Get the current date */
-	time_t now = time(NULL);
-	struct tm *current = localtime(&now);
-
-	if (!current)
-		return -1;
-
-	pday = day ? day : &internal_day;
-	pmonth = month ? month : &internal_month;
-	pyear = year ? year : &internal_year;
-
-	*pday = current->tm_mday;
-	*pmonth = current->tm_mon + 1; /* tm_mon is 0-based
-					  (Jan = 0, Dec = 11) */
-	*pyear = current->tm_year + 1900; /* tm_year is years since 1900 */
-
-	return 0;
-}
-
-static int vacation_days_this_month(int vacation_days_per_year)
-{
-	int day;
-	int month;
-	int year;
-	int days_this_month;
-	int vacation_days_per_month = vacation_days_per_year / MONTHS_IN_YEAR;
-
-	if (get_year_month_day(&year, &month, &day))
-		return -1;
-
-	days_this_month = days_in_month(month, year);
-
-	return (int)(((double)day / days_this_month) * vacation_days_per_month);
-}
-
-static int vacation_days_since_start_of_year(int vacation_days_per_year)
-{
-	int day;
-	int month;
-	int year;
-	int vacation_days_per_month = vacation_days_per_year / MONTHS_IN_YEAR;
-
-	if (get_year_month_day(&year, &month, &day))
-		return -1;
-
-	return (int)((month - 1 +
-		((double)day / days_in_month(month, year))) *
-		vacation_days_per_month);
-}
-
-static int calculate_vacation(int vacation_days_per_year,
-		int max_vacation_accumulation_allowed,
-		double payslip_vacation_hours, struct vacation_stats *stats)
-{
-	stats->days_due_total = (int)(payslip_vacation_hours / WORK_DAY_IN_HOURS) +
-		vacation_days_this_month(vacation_days_per_year);
-
-	stats->days_due_this_year =
-		vacation_days_since_start_of_year(vacation_days_per_year);
-
-	if (stats->days_due_this_year == -1)
-		return -1;
-
-	stats->days_remaining_this_year = vacation_days_per_year -
-		stats->days_due_this_year;
-	stats->days_due_accumulated = MAX(0, stats->days_due_total -
-		stats->days_due_this_year);
-	stats->total_due_at_end_of_year = MAX(0,
-		stats->days_due_total + stats->days_remaining_this_year -
-		max_vacation_accumulation_allowed);
-	stats->expected_excess_at_end_of_year = MAX(0,
-		stats->days_due_total + stats->days_remaining_this_year -
-		max_vacation_accumulation_allowed);
-
-	return 0;
-}
-
 static void print_vacation_stats(struct vacation_stats *stats)
 {
 	printf("Current vacation days due: %d", stats->days_due_total);
@@ -168,7 +60,7 @@ static void print_vacation_stats(struct vacation_stats *stats)
 			stats->days_due_accumulated, stats->days_due_this_year);
 	}
 	printf("\n");
-	printf("Expected additional days to end of year: %d\n",
+	printf("Expected additional days by end of year: %d\n",
 		stats->days_remaining_this_year);
 	printf("Expected total due at end of year: %d\n",
 		stats->total_due_at_end_of_year);
@@ -176,7 +68,8 @@ static void print_vacation_stats(struct vacation_stats *stats)
 		stats->expected_excess_at_end_of_year);
 }
 
-int main(int argc, char **argv)
+static enum action parse_args(int argc, char **argv,
+		struct vacation_params *params)
 {
 	int vacation_days_per_year;
 	int max_vacation_accumulation_allowed;
@@ -184,7 +77,7 @@ int main(int argc, char **argv)
 	char *optstring = "ha:m:";
 	struct option longopts[] = {
 		{
-			.name = "anual",
+			.name = "annual",
 			.val = 'a',
 			.has_arg = required_argument,
 			.flag = NULL,
@@ -200,8 +93,6 @@ int main(int argc, char **argv)
 	char *err;
 	int arg;
 	int argc_expected = 2;
-	int ret = -1;
-	struct vacation_stats stats;
 
 	vacation_days_per_year = VACATION_DAYS_PER_YEAR;
 	max_vacation_accumulation_allowed = MAX_VACATION_ACCUMULATION_ALLOWED;
@@ -210,52 +101,69 @@ int main(int argc, char **argv)
 			-1) {
 		switch (arg) {
 		case 'h':
-			ret = 0;
-			goto show_usage;
-			break;
+			return ACTION_HELP;
 		case 'a':
 			vacation_days_per_year = strtol(optarg, &err, 10);
 			if (*err) {
-				printf("Invalid agrument for --anual/-a: %s\n",
+				printf("Invalid agrument for --annual/-a: %s\n",
 					argv[optind]);
-				usage(argv[0]);
-				goto show_usage;
+				return ACTION_INPUT_ERROR;
 			}
 			argc_expected += 2;
 			break;
 		case 'm':
-			max_vacation_accumulation_allowed = strtol(optarg,
-				&err, 10);
+			max_vacation_accumulation_allowed = strtol(optarg, &err, 10);
 			if (*err) {
 				printf("Invalid agrument for --max/-m: %s\n",
 					argv[optind]);
-				usage(argv[0]);
-				goto show_usage;
+				return ACTION_INPUT_ERROR;
 			}
 			argc_expected += 2;
 			break;
 		}
 	}
 
-	if (argc != argc_expected || max_vacation_accumulation_allowed <
-			vacation_days_per_year) {
-		goto show_usage;
-	}
+	if (argc != argc_expected)
+		return ACTION_INPUT_ERROR;
 
 	payslip_vacation_hours = strtod(argv[argc_expected - 1], &err);
 	if (*err) {
 		printf("Invalid agrument: %s\n", argv[argc_expected - 1]);
-		goto show_usage;
+		return ACTION_INPUT_ERROR;
 	}
 
 	printf("aunual = %d, max = %d, hours = %.2lf\n",vacation_days_per_year,
 		max_vacation_accumulation_allowed, payslip_vacation_hours);
 
-	if (calculate_vacation(vacation_days_per_year,
-			max_vacation_accumulation_allowed,
-			payslip_vacation_hours, &stats)) {
-		printf("Error in vacation calculation\n");
+	params->vacation_days_per_year = vacation_days_per_year;
+	params->max_vacation_accumulation_allowed =
+		max_vacation_accumulation_allowed;
+	params->payslip_vacation_hours = payslip_vacation_hours;
+
+	return ACTION_CALCULATE;
+}
+
+int main(int argc, char **argv)
+{
+	struct vacation_params params;
+	struct vacation_stats stats;
+	int ret = 0;
+
+	switch (parse_args(argc, argv, &params)) {
+	case ACTION_CALCULATE:
+		if (vacation_calculate(&params, &stats)) {
+			printf("Error in vacation calculation\n");
+			ret = -1;
+			goto show_usage;
+		}
+		break;
+	case ACTION_HELP:
 		goto show_usage;
+	case ACTION_INPUT_ERROR:
+		ret = -1;
+		goto show_usage;
+	default:
+		break;
 	}
 
 	print_vacation_stats(&stats);
