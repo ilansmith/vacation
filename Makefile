@@ -1,9 +1,19 @@
 CC=gcc
 CPP=cpp
 CFLAGS=-ansi -Werror -Wall -pedantic-errors -std=gnu99
-APP=vacation_days
+ALL_APPS=vacation_days vacation_test
 
-OBJS=vacation.o vacation_days.o
+OBJS=vacation.o
+
+ifeq ($(TESTS),y)
+  APP=vacation_test
+  OBJS+=vacation_test.o
+  CFLAGS+=-DTESTS
+  DEBUG=y
+else
+  APP=vacation_days
+  OBJS+=vacation_days.o
+endif
 
 ifeq ($(DEBUG),y)
   CFLAGS+=-O0 -g
@@ -32,6 +42,6 @@ clean:
 cleanall: clean
 	@echo "removing tag file"
 	@rm -f tags
-	@echo "removing $(APP)"
-	@rm -f $(APP)
+	@echo "removing $(ALL_APPS)"
+	@rm -f $(ALL_APPS)
 
