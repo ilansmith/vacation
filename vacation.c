@@ -6,9 +6,13 @@
 #include "vacation.h"
 
 #define MONTHS_IN_YEAR 12
-#define WORK_DAY_IN_HOURS 8.416666666
 
 #define MAX(a, b) (a < b ? b : a)
+
+#if defined(TESTS)
+uint16_t test_day;
+uint16_t test_month;
+#endif
 
 /* check if a year is a leap year */
 static int is_leap_year(uint16_t year)
@@ -46,9 +50,14 @@ static int get_year_month_day(uint16_t *year, uint16_t *month, uint16_t *day)
 	pmonth = month ? month : &internal_month;
 	pyear = year ? year : &internal_year;
 
+#if defined(TESTS)
+	*pday = test_day;
+	*pmonth = test_month;
+#else
 	*pday = current->tm_mday;
-	*pmonth = current->tm_mon + 1; /* tm_mon is 0-based
+	*pmonth = current->tm_mon + 1; /* tm_mon is0-based
 					  (Jan = 0, Dec = 11) */
+#endif
 	*pyear = current->tm_year + 1900; /* tm_year is years since 1900 */
 
 	return 0;

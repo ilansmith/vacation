@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+#define WORK_DAY_IN_HOURS 8.41666666666666
+
+#if defined(TESTS)
+extern uint16_t test_day;
+extern uint16_t test_month;
+#endif
+
 struct vacation_params {
 	uint16_t vacation_days_per_year;
 	uint16_t max_vacation_accumulation_allowed;
