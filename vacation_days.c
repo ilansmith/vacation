@@ -14,6 +14,15 @@
 
 #define MAX(a, b) (a < b ? b : a)
 
+struct vacation_stats {
+	int days_due_total;
+	int days_due_this_year;
+	int days_remaining_this_year;
+	int days_due_accumulated;
+	int total_due_at_end_of_year;
+	int expected_excess_at_end_of_year;
+};
+
 static char *app_name_get(char *arg)
 {
 	char *app_name;
@@ -126,42 +135,45 @@ static int vacation_days_since_start_of_year(int vacation_days_per_year)
 
 static int calculate_vacation(int vacation_days_per_year,
 		int max_vacation_accumulation_allowed,
-		double payslip_vacation_hours)
+		double payslip_vacation_hours, struct vacation_stats *stats)
 {
-	int days_due_total;
-	int days_due_this_year;
-	int days_remaining_this_year;
-	int days_due_accumulated;
-
-	days_due_total = (int)(payslip_vacation_hours / WORK_DAY_IN_HOURS) +
+	stats->days_due_total = (int)(payslip_vacation_hours / WORK_DAY_IN_HOURS) +
 		vacation_days_this_month(vacation_days_per_year);
 
-	days_due_this_year =
+	stats->days_due_this_year =
 		vacation_days_since_start_of_year(vacation_days_per_year);
 
-	if (days_due_this_year == -1)
+	if (stats->days_due_this_year == -1)
 		return -1;
 
-	days_remaining_this_year = vacation_days_per_year -
-		days_due_this_year;
-	days_due_accumulated = MAX(0, days_due_total - days_due_this_year);
+	stats->days_remaining_this_year = vacation_days_per_year -
+		stats->days_due_this_year;
+	stats->days_due_accumulated = MAX(0, stats->days_due_total -
+		stats->days_due_this_year);
+	stats->total_due_at_end_of_year = MAX(0,
+		stats->days_due_total + stats->days_remaining_this_year -
+		max_vacation_accumulation_allowed);
+	stats->expected_excess_at_end_of_year = MAX(0,
+		stats->days_due_total + stats->days_remaining_this_year -
+		max_vacation_accumulation_allowed);
 
-	printf("Current vacation days due: %d", days_due_total);
-	if (days_due_accumulated) {
+	return 0;
+}
+
+static void print_vacation_stats(struct vacation_stats *stats)
+{
+	printf("Current vacation days due: %d", stats->days_due_total);
+	if (stats->days_due_accumulated) {
 		printf(" (accumulated %d, current year %d)",
-			days_due_accumulated, days_due_this_year);
+			stats->days_due_accumulated, stats->days_due_this_year);
 	}
 	printf("\n");
 	printf("Expected additional days to end of year: %d\n",
-		days_remaining_this_year);
+		stats->days_remaining_this_year);
 	printf("Expected total due at end of year: %d\n",
-		days_due_total + days_remaining_this_year);
-
+		stats->total_due_at_end_of_year);
 	printf("Expected excess days at end of year: %d\n",
-		MAX(0, days_due_total + days_remaining_this_year -
-			max_vacation_accumulation_allowed));
-
-	return 0;
+		stats->expected_excess_at_end_of_year);
 }
 
 int main(int argc, char **argv)
@@ -189,6 +201,7 @@ int main(int argc, char **argv)
 	int arg;
 	int argc_expected = 2;
 	int ret = -1;
+	struct vacation_stats stats;
 
 	vacation_days_per_year = VACATION_DAYS_PER_YEAR;
 	max_vacation_accumulation_allowed = MAX_VACATION_ACCUMULATION_ALLOWED;
@@ -240,11 +253,12 @@ int main(int argc, char **argv)
 
 	if (calculate_vacation(vacation_days_per_year,
 			max_vacation_accumulation_allowed,
-			payslip_vacation_hours)) {
+			payslip_vacation_hours, &stats)) {
 		printf("Error in vacation calculation\n");
-		return -1;
+		goto show_usage;
 	}
 
+	print_vacation_stats(&stats);
 	return 0;
 
 show_usage:
