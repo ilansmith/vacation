@@ -89,6 +89,24 @@ static test_t tests[] = {
 			.expected_excess_at_end_of_year = 2,
 		},
 	},
+	{
+		.description = "Two days removed - January 15",
+		.current_month = 1,
+		.day_of_month = 15,
+		.params = {
+			.vacation_days_per_year = 24,
+			.max_vacation_accumulation_allowed = 36,
+			.payslip_vacation_hours = WORK_DAY_TO_HOURS(38),
+		},
+		.expected = {
+			.days_due_total = 36,
+			.days_due_this_year = 0,
+			.days_remaining_this_year = 24,
+			.days_due_accumulated = 36,
+			.total_due_at_end_of_year = 60,
+			.expected_excess_at_end_of_year = 24,
+		},
+	},
 	{ NULL }
 };
 

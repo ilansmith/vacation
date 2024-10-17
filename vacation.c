@@ -97,12 +97,31 @@ static uint16_t vacation_days_since_start_of_year(int vacation_days_per_year)
 		vacation_days_per_month);
 }
 
+static uint16_t days_due_total_get(struct vacation_params *params)
+{
+	uint16_t days_due_total;
+	uint16_t month;
+
+	if (get_year_month_day(NULL, &month, NULL))
+		return -1;
+
+	days_due_total = (uint16_t)(params->payslip_vacation_hours /
+		WORK_DAY_IN_HOURS) +
+		vacation_days_this_month(params->vacation_days_per_year);
+
+	if (month == 1 && params->max_vacation_accumulation_allowed <
+			days_due_total) {
+		days_due_total = params->max_vacation_accumulation_allowed;
+	}
+
+	return days_due_total;
+}
+
 int vacation_calculate(struct vacation_params *params,
 		struct vacation_stats *stats)
 {
-	stats->days_due_total = (int)(params->payslip_vacation_hours /
-		WORK_DAY_IN_HOURS) +
-		vacation_days_this_month(params->vacation_days_per_year);
+	if ((stats->days_due_total = days_due_total_get(params)) == -1)
+		return -1;
 
 	stats->days_due_this_year = vacation_days_since_start_of_year(
 		params->vacation_days_per_year);
