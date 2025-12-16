@@ -132,7 +132,7 @@ static enum action parse_args(int argc, char **argv,
 		return ACTION_INPUT_ERROR;
 	}
 
-	printf("aunual = %d, max = %d, hours = %.2lf\n",vacation_days_per_year,
+	printf("annual = %d, max = %d, hours = %.2lf\n",vacation_days_per_year,
 		max_vacation_accumulation_allowed, payslip_vacation_hours);
 
 	params->vacation_days_per_year = vacation_days_per_year;

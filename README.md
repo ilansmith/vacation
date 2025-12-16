@@ -49,7 +49,7 @@ Examples
 
 ```
 ./vacation_days 270.2
-aunual = 24, max = 36, hours = 270.20
+annual = 24, max = 36, hours = 270.20
 Current vacation days due: 32 (accumulated 14, current year 18)
 Expected additional days by end of year: 6
 Expected total due at end of year: 38
@@ -72,7 +72,7 @@ Expected excess days at end of year: 2
   October (i.e. sometime between October 16 and 31).
 ```
 ./vacation_days 270.2
-aunual = 24, max = 36, hours = 270.20
+annual = 24, max = 36, hours = 270.20
 Current vacation days due: 33 (accumulated 14, current year 19)
 Expected additional days by end of year: 5
 Expected total due at end of year: 38
