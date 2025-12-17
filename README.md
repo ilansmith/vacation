@@ -2,6 +2,13 @@
 
 A cross-platform C program that calculates the expected vacation days credit an employee will have at the end of the year.
 
+## Web Interface
+
+Open `vacation_calculator.html` in any web browser for a graphical interface that includes:
+- Interactive form for all input parameters
+- Real-time calculation without server requirements
+- Usage documentation and examples
+
 ## Features
 
 - Calculates additional vacation days expected by year end
