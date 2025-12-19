@@ -220,80 +220,6 @@ static void test_parse_number_empty_rejected(void)
 }
 
 /*
- * Test: is_half_day_resolution
- */
-
-static void test_half_day_zero(void)
-{
-	TEST_START("is_half_day_resolution with zero");
-	ASSERT_TRUE(is_half_day_resolution(0.0));
-	TEST_PASS();
-}
-
-static void test_half_day_integer(void)
-{
-	TEST_START("is_half_day_resolution with integer");
-	ASSERT_TRUE(is_half_day_resolution(5.0));
-	TEST_PASS();
-}
-
-static void test_half_day_half(void)
-{
-	TEST_START("is_half_day_resolution with 0.5");
-	ASSERT_TRUE(is_half_day_resolution(0.5));
-	TEST_PASS();
-}
-
-static void test_half_day_one_and_half(void)
-{
-	TEST_START("is_half_day_resolution with 1.5");
-	ASSERT_TRUE(is_half_day_resolution(1.5));
-	TEST_PASS();
-}
-
-static void test_half_day_large_half(void)
-{
-	TEST_START("is_half_day_resolution with 10.5");
-	ASSERT_TRUE(is_half_day_resolution(10.5));
-	TEST_PASS();
-}
-
-static void test_half_day_quarter_rejected(void)
-{
-	TEST_START("is_half_day_resolution rejects 0.25");
-	ASSERT_FALSE(is_half_day_resolution(0.25));
-	TEST_PASS();
-}
-
-static void test_half_day_third_rejected(void)
-{
-	TEST_START("is_half_day_resolution rejects 0.33");
-	ASSERT_FALSE(is_half_day_resolution(0.33));
-	TEST_PASS();
-}
-
-static void test_half_day_three_quarters_rejected(void)
-{
-	TEST_START("is_half_day_resolution rejects 0.75");
-	ASSERT_FALSE(is_half_day_resolution(0.75));
-	TEST_PASS();
-}
-
-static void test_half_day_negative_rejected(void)
-{
-	TEST_START("is_half_day_resolution rejects negative");
-	ASSERT_FALSE(is_half_day_resolution(-1.0));
-	TEST_PASS();
-}
-
-static void test_half_day_arbitrary_rejected(void)
-{
-	TEST_START("is_half_day_resolution rejects 2.3");
-	ASSERT_FALSE(is_half_day_resolution(2.3));
-	TEST_PASS();
-}
-
-/*
  * Test: is_leap_year
  */
 
@@ -650,17 +576,158 @@ static void test_validate_vacation_days_negative(void)
 	TEST_PASS();
 }
 
-static void test_validate_vacation_days_invalid_resolution(void)
+static void test_validate_vacation_days_fractional(void)
 {
-	TEST_START("validate_vacation_days invalid resolution (0.25)");
-	ASSERT_INT_EQ(1, validate_vacation_days(0.25, 250));
+	TEST_START("validate_vacation_days fractional (0.25)");
+	ASSERT_INT_EQ(0, validate_vacation_days(0.25, 250));
 	TEST_PASS();
 }
 
-static void test_validate_vacation_days_invalid_resolution_quarter(void)
+static void test_validate_vacation_days_fractional_2(void)
 {
-	TEST_START("validate_vacation_days invalid resolution (2.75)");
-	ASSERT_INT_EQ(1, validate_vacation_days(2.75, 250));
+	TEST_START("validate_vacation_days fractional (2.75)");
+	ASSERT_INT_EQ(0, validate_vacation_days(2.75, 250));
+	TEST_PASS();
+}
+
+/*
+ * Test: validate_annual_days
+ */
+
+static void test_validate_annual_days_minimum(void)
+{
+	TEST_START("validate_annual_days at minimum (15)");
+	ASSERT_INT_EQ(0, validate_annual_days(MIN_ANNUAL_DAYS));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_maximum(void)
+{
+	TEST_START("validate_annual_days at maximum (24)");
+	ASSERT_INT_EQ(0, validate_annual_days(MAX_ANNUAL_DAYS));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_middle(void)
+{
+	TEST_START("validate_annual_days middle value (18)");
+	ASSERT_INT_EQ(0, validate_annual_days(18));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_all_valid(void)
+{
+	int i;
+	TEST_START("validate_annual_days all valid values (15-24)");
+	for (i = 0; i < NUM_VALID_ANNUAL_OPTIONS; i++) {
+		ASSERT_INT_EQ(0, validate_annual_days(VALID_ANNUAL_DAYS[i]));
+	}
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_below_minimum(void)
+{
+	TEST_START("validate_annual_days below minimum (14)");
+	ASSERT_INT_EQ(1, validate_annual_days(14));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_above_maximum(void)
+{
+	TEST_START("validate_annual_days above maximum (25)");
+	ASSERT_INT_EQ(1, validate_annual_days(25));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_zero(void)
+{
+	TEST_START("validate_annual_days zero");
+	ASSERT_INT_EQ(1, validate_annual_days(0));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_negative(void)
+{
+	TEST_START("validate_annual_days negative");
+	ASSERT_INT_EQ(1, validate_annual_days(-5));
+	TEST_PASS();
+}
+
+static void test_validate_annual_days_very_large(void)
+{
+	TEST_START("validate_annual_days very large (100)");
+	ASSERT_INT_EQ(1, validate_annual_days(100));
+	TEST_PASS();
+}
+
+/*
+ * Test: calculate_max_accum - normal case (always 36)
+ */
+
+static void test_max_accum_normal_15_days(void)
+{
+	TEST_START("calculate_max_accum normal 15 days -> 36");
+	ASSERT_INT_EQ(36, calculate_max_accum(15, 0));
+	TEST_PASS();
+}
+
+static void test_max_accum_normal_18_days(void)
+{
+	TEST_START("calculate_max_accum normal 18 days -> 36");
+	ASSERT_INT_EQ(36, calculate_max_accum(18, 0));
+	TEST_PASS();
+}
+
+static void test_max_accum_normal_24_days(void)
+{
+	TEST_START("calculate_max_accum normal 24 days -> 36");
+	ASSERT_INT_EQ(36, calculate_max_accum(24, 0));
+	TEST_PASS();
+}
+
+/*
+ * Test: calculate_max_accum - special accum
+ */
+
+static void test_max_accum_special_15_days(void)
+{
+	TEST_START("calculate_max_accum special 15 days -> 36");
+	ASSERT_INT_EQ(36, calculate_max_accum(15, 1));
+	TEST_PASS();
+}
+
+static void test_max_accum_special_17_days(void)
+{
+	TEST_START("calculate_max_accum special 17 days -> 36");
+	ASSERT_INT_EQ(36, calculate_max_accum(17, 1));
+	TEST_PASS();
+}
+
+static void test_max_accum_special_18_days(void)
+{
+	TEST_START("calculate_max_accum special 18 days -> 36");
+	ASSERT_INT_EQ(36, calculate_max_accum(18, 1));
+	TEST_PASS();
+}
+
+static void test_max_accum_special_19_days(void)
+{
+	TEST_START("calculate_max_accum special 19 days -> 38");
+	ASSERT_INT_EQ(38, calculate_max_accum(19, 1));
+	TEST_PASS();
+}
+
+static void test_max_accum_special_20_days(void)
+{
+	TEST_START("calculate_max_accum special 20 days -> 40");
+	ASSERT_INT_EQ(40, calculate_max_accum(20, 1));
+	TEST_PASS();
+}
+
+static void test_max_accum_special_24_days(void)
+{
+	TEST_START("calculate_max_accum special 24 days -> 48");
+	ASSERT_INT_EQ(48, calculate_max_accum(24, 1));
 	TEST_PASS();
 }
 
@@ -936,101 +1003,55 @@ static void test_total_hours_large_values(void)
 }
 
 /*
- * Test: round_total_days
- */
-
-static void test_round_total_days_exact(void)
-{
-	TEST_START("round_total_days with exact integer");
-	ASSERT_INT_EQ(30, round_total_days(30.0));
-	TEST_PASS();
-}
-
-static void test_round_total_days_round_down(void)
-{
-	TEST_START("round_total_days rounds down");
-	ASSERT_INT_EQ(30, round_total_days(30.4));
-	TEST_PASS();
-}
-
-static void test_round_total_days_round_up(void)
-{
-	TEST_START("round_total_days rounds up");
-	ASSERT_INT_EQ(31, round_total_days(30.6));
-	TEST_PASS();
-}
-
-static void test_round_total_days_half_rounds_up(void)
-{
-	TEST_START("round_total_days half rounds up");
-	ASSERT_INT_EQ(31, round_total_days(30.5));
-	TEST_PASS();
-}
-
-static void test_round_total_days_zero(void)
-{
-	TEST_START("round_total_days with zero");
-	ASSERT_INT_EQ(0, round_total_days(0.0));
-	TEST_PASS();
-}
-
-static void test_round_total_days_small_fraction(void)
-{
-	TEST_START("round_total_days with small fraction");
-	ASSERT_INT_EQ(20, round_total_days(19.88));
-	TEST_PASS();
-}
-
-/*
  * Test: calculate_excess_days
  */
 
 static void test_excess_days_under_limit(void)
 {
 	TEST_START("calculate_excess_days under limit");
-	ASSERT_INT_EQ(0, calculate_excess_days(30, 36));
+	ASSERT_DOUBLE_EQ(0.0, calculate_excess_days(30.0, 36));
 	TEST_PASS();
 }
 
 static void test_excess_days_at_limit(void)
 {
 	TEST_START("calculate_excess_days at limit");
-	ASSERT_INT_EQ(0, calculate_excess_days(36, 36));
+	ASSERT_DOUBLE_EQ(0.0, calculate_excess_days(36.0, 36));
 	TEST_PASS();
 }
 
 static void test_excess_days_over_limit(void)
 {
 	TEST_START("calculate_excess_days over limit");
-	ASSERT_INT_EQ(4, calculate_excess_days(40, 36));
+	ASSERT_DOUBLE_EQ(4.0, calculate_excess_days(40.0, 36));
 	TEST_PASS();
 }
 
 static void test_excess_days_way_over_limit(void)
 {
 	TEST_START("calculate_excess_days way over limit");
-	ASSERT_INT_EQ(64, calculate_excess_days(100, 36));
+	ASSERT_DOUBLE_EQ(64.0, calculate_excess_days(100.0, 36));
 	TEST_PASS();
 }
 
 static void test_excess_days_zero_total(void)
 {
 	TEST_START("calculate_excess_days with zero total");
-	ASSERT_INT_EQ(0, calculate_excess_days(0, 36));
+	ASSERT_DOUBLE_EQ(0.0, calculate_excess_days(0.0, 36));
 	TEST_PASS();
 }
 
 static void test_excess_days_zero_limit(void)
 {
 	TEST_START("calculate_excess_days with zero limit");
-	ASSERT_INT_EQ(10, calculate_excess_days(10, 0));
+	ASSERT_DOUBLE_EQ(10.0, calculate_excess_days(10.0, 0));
 	TEST_PASS();
 }
 
 static void test_excess_days_one_over(void)
 {
 	TEST_START("calculate_excess_days one over limit");
-	ASSERT_INT_EQ(1, calculate_excess_days(37, 36));
+	ASSERT_DOUBLE_EQ(1.0, calculate_excess_days(37.0, 36));
 	TEST_PASS();
 }
 
@@ -1056,8 +1077,8 @@ static void test_calculate_vacation_full_year_january(void)
 
 	ASSERT_INT_EQ(12, result.remaining_months);
 	ASSERT_DOUBLE_EQ(24.0, result.additional_days);
-	ASSERT_INT_EQ(24, result.total_days);
-	ASSERT_INT_EQ(0, result.excess_days);
+	ASSERT_DOUBLE_EQ(24.0, result.total_days);
+	ASSERT_DOUBLE_EQ(0.0, result.excess_days);
 	TEST_PASS();
 }
 
@@ -1079,8 +1100,8 @@ static void test_calculate_vacation_december_excess(void)
 
 	ASSERT_INT_EQ(1, result.remaining_months);
 	ASSERT_DOUBLE_EQ(2.0, result.additional_days);
-	ASSERT_INT_EQ(42, result.total_days);
-	ASSERT_INT_EQ(6, result.excess_days);
+	ASSERT_DOUBLE_EQ(42.0, result.total_days);
+	ASSERT_DOUBLE_EQ(6.0, result.excess_days);
 	TEST_PASS();
 }
 
@@ -1101,8 +1122,8 @@ static void test_calculate_vacation_with_vacation_extra(void)
 	calculate_vacation(&input, &result);
 
 	/* 20 + 2 - 5 = 17 days */
-	ASSERT_INT_EQ(17, result.total_days);
-	ASSERT_INT_EQ(0, result.excess_days);
+	ASSERT_DOUBLE_EQ(17.0, result.total_days);
+	ASSERT_DOUBLE_EQ(0.0, result.excess_days);
 	TEST_PASS();
 }
 
@@ -1122,8 +1143,8 @@ static void test_calculate_vacation_with_half_day_vacation(void)
 
 	calculate_vacation(&input, &result);
 
-	/* 20 + 2 - 2.5 = 19.5 rounds to 19 (standard rounding) */
-	ASSERT_INT_EQ(19, result.total_days);
+	/* 20 + 2 - 2.5 = 19.5 days (no rounding) */
+	ASSERT_DOUBLE_EQ(19.5, result.total_days);
 	TEST_PASS();
 }
 
@@ -1144,8 +1165,8 @@ static void test_calculate_vacation_vacation_prevents_excess(void)
 	calculate_vacation(&input, &result);
 
 	/* 40 + 2 - 6 = 36 days (at limit) */
-	ASSERT_INT_EQ(36, result.total_days);
-	ASSERT_INT_EQ(0, result.excess_days);
+	ASSERT_DOUBLE_EQ(36.0, result.total_days);
+	ASSERT_DOUBLE_EQ(0.0, result.excess_days);
 	TEST_PASS();
 }
 
@@ -1200,8 +1221,7 @@ static void test_init_vacation_args(void)
 	TEST_START("init_vacation_args sets defaults");
 	init_vacation_args(&args);
 
-	ASSERT_INT_EQ(DEFAULT_ANNUAL_DAYS, args.annual_days);
-	ASSERT_INT_EQ(DEFAULT_MAX_ACCUM_DAYS, args.max_accum_days);
+	ASSERT_INT_EQ(0, args.annual_days);	/* No default - must be set */
 	ASSERT_DOUBLE_EQ(0.0, args.current_hours);
 	ASSERT_INT_EQ(0, args.annual_days_set);
 	ASSERT_INT_EQ(0, args.annual_hours_set);
@@ -1209,6 +1229,7 @@ static void test_init_vacation_args(void)
 	ASSERT_DOUBLE_EQ(0.0, args.vacation_extra);
 	ASSERT_INT_EQ(0, args.vacation_extra_set);
 	ASSERT_INT_EQ(WEEK_START_SUNDAY, args.week_start);
+	ASSERT_INT_EQ(0, args.special_accum);
 	TEST_PASS();
 }
 
@@ -1220,10 +1241,10 @@ static void test_validate_args_neither_set(void)
 {
 	struct vacation_args args;
 
-	TEST_START("validate_arguments with neither annual option set");
+	TEST_START("validate_arguments with neither annual option set returns error");
 	init_vacation_args(&args);
 
-	ASSERT_INT_EQ(0, validate_arguments(&args));
+	ASSERT_INT_EQ(1, validate_arguments(&args));
 	TEST_PASS();
 }
 
@@ -1319,21 +1340,6 @@ static void run_parse_number_tests(void)
 	test_parse_number_empty_rejected();
 }
 
-static void run_half_day_resolution_tests(void)
-{
-	printf("\n[Half Day Resolution]\n");
-	test_half_day_zero();
-	test_half_day_integer();
-	test_half_day_half();
-	test_half_day_one_and_half();
-	test_half_day_large_half();
-	test_half_day_quarter_rejected();
-	test_half_day_third_rejected();
-	test_half_day_three_quarters_rejected();
-	test_half_day_negative_rejected();
-	test_half_day_arbitrary_rejected();
-}
-
 static void run_leap_year_tests(void)
 {
 	printf("\n[Leap Year]\n");
@@ -1405,8 +1411,37 @@ static void run_validate_vacation_days_tests(void)
 	test_validate_vacation_days_max_remaining();
 	test_validate_vacation_days_exceeds_remaining();
 	test_validate_vacation_days_negative();
-	test_validate_vacation_days_invalid_resolution();
-	test_validate_vacation_days_invalid_resolution_quarter();
+	test_validate_vacation_days_fractional();
+	test_validate_vacation_days_fractional_2();
+}
+
+static void run_validate_annual_days_tests(void)
+{
+	printf("\n[Validate Annual Days]\n");
+	test_validate_annual_days_minimum();
+	test_validate_annual_days_maximum();
+	test_validate_annual_days_middle();
+	test_validate_annual_days_all_valid();
+	test_validate_annual_days_below_minimum();
+	test_validate_annual_days_above_maximum();
+	test_validate_annual_days_zero();
+	test_validate_annual_days_negative();
+	test_validate_annual_days_very_large();
+}
+
+static void run_max_accum_tests(void)
+{
+	printf("\n[Max Accumulated Days - Normal Case]\n");
+	test_max_accum_normal_15_days();
+	test_max_accum_normal_18_days();
+	test_max_accum_normal_24_days();
+	printf("\n[Max Accumulated Days - Special Accum]\n");
+	test_max_accum_special_15_days();
+	test_max_accum_special_17_days();
+	test_max_accum_special_18_days();
+	test_max_accum_special_19_days();
+	test_max_accum_special_20_days();
+	test_max_accum_special_24_days();
 }
 
 static void run_conversion_tests(void)
@@ -1467,17 +1502,6 @@ static void run_total_hours_tests(void)
 	test_total_hours_large_values();
 }
 
-static void run_round_total_days_tests(void)
-{
-	printf("\n[Rounding Total Days]\n");
-	test_round_total_days_exact();
-	test_round_total_days_round_down();
-	test_round_total_days_round_up();
-	test_round_total_days_half_rounds_up();
-	test_round_total_days_zero();
-	test_round_total_days_small_fraction();
-}
-
 static void run_excess_days_tests(void)
 {
 	printf("\n[Excess Days Calculation]\n");
@@ -1525,7 +1549,6 @@ int main(void)
 
 	run_parse_integer_tests();
 	run_parse_number_tests();
-	run_half_day_resolution_tests();
 	run_leap_year_tests();
 	run_days_in_month_tests();
 	run_day_of_week_tests();
@@ -1533,12 +1556,13 @@ int main(void)
 	run_remaining_working_days_tests();
 	run_working_days_from_prev_month_tests();
 	run_validate_vacation_days_tests();
+	run_validate_annual_days_tests();
+	run_max_accum_tests();
 	run_conversion_tests();
 	run_remaining_months_tests();
 	run_monthly_hours_tests();
 	run_additional_hours_tests();
 	run_total_hours_tests();
-	run_round_total_days_tests();
 	run_excess_days_tests();
 	run_integration_tests();
 	run_args_tests();

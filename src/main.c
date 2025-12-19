@@ -13,6 +13,15 @@ static const char *month_names[] = {
 	"July", "August", "September", "October", "November", "December"
 };
 
+/* Valid annual vacation days and corresponding hours */
+const int VALID_ANNUAL_DAYS[NUM_VALID_ANNUAL_OPTIONS] = {
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+};
+
+const int VALID_ANNUAL_HOURS[NUM_VALID_ANNUAL_OPTIONS] = {
+	126, 135, 143, 152, 159, 168, 177, 185, 194, 202
+};
+
 /*
  * Conversion functions
  */
@@ -81,20 +90,6 @@ int parse_number(const char *str, double *value)
 		return 1;
 
 	return 0;
-}
-
-int is_half_day_resolution(double value)
-{
-	double fractional;
-
-	if (value < 0)
-		return 0;
-
-	/* Get fractional part */
-	fractional = value - floor(value);
-
-	/* Check if fractional part is 0 or 0.5 (with small epsilon for float comparison) */
-	return (fabs(fractional) < 0.001 || fabs(fractional - 0.5) < 0.001);
 }
 
 /*
@@ -249,22 +244,16 @@ double calculate_total_hours(double current_hours, double additional_hours)
 	return current_hours + additional_hours;
 }
 
-int round_total_days(double total_days)
+double calculate_excess_days(double total_days, int max_accum_days)
 {
-	return (int)round(total_days);
-}
+	double excess = total_days - (double)max_accum_days;
 
-int calculate_excess_days(int total_days, int max_accum_days)
-{
-	int excess = total_days - max_accum_days;
-
-	return (excess > 0) ? excess : 0;
+	return (excess > 0) ? excess : 0.0;
 }
 
 void calculate_vacation(const struct vacation_input *input,
 			struct vacation_result *result)
 {
-	double total_days_float;
 	double vacation_hours;
 
 	result->remaining_months = calculate_remaining_months(input->current_month);
@@ -279,8 +268,7 @@ void calculate_vacation(const struct vacation_input *input,
 	vacation_hours = days_to_hours(input->vacation_extra);
 	result->total_hours -= vacation_hours;
 
-	total_days_float = hours_to_days(result->total_hours);
-	result->total_days = round_total_days(total_days_float);
+	result->total_days = hours_to_days(result->total_hours);
 	result->excess_days = calculate_excess_days(result->total_days,
 						    input->max_accum_days);
 
@@ -295,8 +283,7 @@ void calculate_vacation(const struct vacation_input *input,
 
 void init_vacation_args(struct vacation_args *args)
 {
-	args->annual_days = DEFAULT_ANNUAL_DAYS;
-	args->max_accum_days = DEFAULT_MAX_ACCUM_DAYS;
+	args->annual_days = 0;	/* Must be set by user */
 	args->current_hours = 0.0;
 	args->annual_days_set = 0;
 	args->annual_hours_set = 0;
@@ -304,10 +291,17 @@ void init_vacation_args(struct vacation_args *args)
 	args->vacation_extra = 0.0;
 	args->vacation_extra_set = 0;
 	args->week_start = WEEK_START_SUNDAY;
+	args->special_accum = 0;
 }
 
 int validate_arguments(const struct vacation_args *args)
 {
+	if (!args->annual_days_set && !args->annual_hours_set) {
+		fprintf(stderr,
+			"Error: Annual vacation days (-d) or hours (-A) must be specified.\n");
+		return 1;
+	}
+
 	if (args->annual_days_set && args->annual_hours_set) {
 		fprintf(stderr,
 			"Error: --annual-days (-d) and --annual-hours (-A) are mutually exclusive.\n");
@@ -317,17 +311,85 @@ int validate_arguments(const struct vacation_args *args)
 	return 0;
 }
 
+void print_valid_annual_options(void)
+{
+	int i;
+
+	fprintf(stderr, "\nValid annual vacation options:\n");
+	for (i = 0; i < NUM_VALID_ANNUAL_OPTIONS; i++) {
+		fprintf(stderr, "  %d days or %d hours\n",
+			VALID_ANNUAL_DAYS[i], VALID_ANNUAL_HOURS[i]);
+	}
+	fprintf(stderr, "\nPlease consult your pay slip for your annual vacation allowance.\n");
+}
+
+int is_valid_annual_hours(int hours, int *days_out)
+{
+	int i;
+
+	for (i = 0; i < NUM_VALID_ANNUAL_OPTIONS; i++) {
+		if (VALID_ANNUAL_HOURS[i] == hours) {
+			if (days_out)
+				*days_out = VALID_ANNUAL_DAYS[i];
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int get_annual_hours_for_days(int days)
+{
+	int i;
+
+	for (i = 0; i < NUM_VALID_ANNUAL_OPTIONS; i++) {
+		if (VALID_ANNUAL_DAYS[i] == days)
+			return VALID_ANNUAL_HOURS[i];
+	}
+	/* Fallback: calculate from WORK_DAY_HOURS */
+	return (int)(days * WORK_DAY_HOURS);
+}
+
+int validate_annual_days(int annual_days)
+{
+	int i;
+	int valid = 0;
+
+	for (i = 0; i < NUM_VALID_ANNUAL_OPTIONS; i++) {
+		if (VALID_ANNUAL_DAYS[i] == annual_days) {
+			valid = 1;
+			break;
+		}
+	}
+
+	if (!valid) {
+		fprintf(stderr,
+			"Error: Invalid annual vacation days (%d).\n",
+			annual_days);
+		print_valid_annual_options();
+		return 1;
+	}
+
+	return 0;
+}
+
+int calculate_max_accum(int annual_days, int special_accum)
+{
+	/* Normal case: always 36 */
+	if (!special_accum)
+		return MIN_MAX_ACCUM_DAYS;
+
+	/* Special accum: 12-17 days -> 36, 18-24 days -> annual_days * 2 */
+	if (annual_days < 18)
+		return MIN_MAX_ACCUM_DAYS;
+
+	return annual_days * 2;
+}
+
 int validate_vacation_days(double vacation_days, int max_working_days)
 {
 	if (vacation_days < 0) {
 		fprintf(stderr,
 			"Error: Extra vacation days consumption cannot be negative.\n");
-		return 1;
-	}
-
-	if (!is_half_day_resolution(vacation_days)) {
-		fprintf(stderr,
-			"Error: Extra vacation days consumption must be in half-day increments (e.g., 1, 1.5, 2, 2.5).\n");
 		return 1;
 	}
 
@@ -343,24 +405,33 @@ int validate_vacation_days(double vacation_days, int max_working_days)
 
 void print_usage(const char *program_name)
 {
+	int i;
+
 	printf("Usage: %s [OPTIONS]\n", program_name);
 	printf("\n");
 	printf("Calculate expected vacation days credit at year end.\n");
 	printf("\n");
 	printf("Options:\n");
-	printf("  -d, --annual-days <days>    Annual vacation days (integer, default: %d)\n",
-	       DEFAULT_ANNUAL_DAYS);
+	printf("  -d, --annual-days <days>    Annual vacation days (integer)\n");
 	printf("                              Mutually exclusive with -A/--annual-hours\n");
 	printf("  -A, --annual-hours <hours>  Annual vacation hours (integer)\n");
 	printf("                              Mutually exclusive with -d/--annual-days\n");
-	printf("  -m, --max-accum <days>      Maximum accumulated days (integer, default: %d)\n",
-	       DEFAULT_MAX_ACCUM_DAYS);
+	printf("  -s, --special-accum         Use special max accumulated days calculation\n");
+	printf("                              (15-17 days: 36, 18-24 days: annual-days * 2)\n");
+	printf("                              Default (without -s): always 36\n");
 	printf("  -c, --current-hours <hours> Current accumulated vacation hours\n");
-	printf("  -v, --vacation-extra <days>    Extra vacation days consumption (X or X.5)\n");
+	printf("  -v, --vacation-extra <days> Extra vacation days consumption\n");
 	printf("  -M, --monday-start          Use Monday as first working day of week\n");
 	printf("                              (default: Sunday)\n");
 	printf("  -h, --help                  Display this help message\n");
 	printf("\n");
+	printf("Valid annual vacation options:\n");
+	for (i = 0; i < NUM_VALID_ANNUAL_OPTIONS; i++) {
+		printf("  %d days or %d hours\n",
+		       VALID_ANNUAL_DAYS[i], VALID_ANNUAL_HOURS[i]);
+	}
+	printf("\n");
+	printf("Either -d/--annual-days or -A/--annual-hours must be specified.\n");
 	printf("If --current-hours is not provided, the program will prompt for input.\n");
 }
 
@@ -405,24 +476,18 @@ int parse_arguments(int argc, char *argv[], struct vacation_args *args)
 					argv[i]);
 				return 1;
 			}
-			/* Convert hours to days for storage */
-			args->annual_days = (int)round(hours_to_days((double)int_value));
-			args->annual_hours_set = 1;
-		} else if (strcmp(argv[i], "-m") == 0 ||
-			   strcmp(argv[i], "--max-accum") == 0) {
-			if (i + 1 >= argc) {
-				fprintf(stderr, "Error: %s requires a value.\n",
-					argv[i]);
-				return 1;
-			}
-			i++;
-			if (parse_integer(argv[i], &int_value) != 0) {
+			/* Validate against specific valid hour values */
+			if (!is_valid_annual_hours(int_value, &args->annual_days)) {
 				fprintf(stderr,
-					"Error: Maximum accumulated days must be an integer: %s\n",
-					argv[i]);
+					"Error: Invalid annual vacation hours (%d).\n",
+					int_value);
+				print_valid_annual_options();
 				return 1;
 			}
-			args->max_accum_days = int_value;
+			args->annual_hours_set = 1;
+		} else if (strcmp(argv[i], "-s") == 0 ||
+			   strcmp(argv[i], "--special-accum") == 0) {
+			args->special_accum = 1;
 		} else if (strcmp(argv[i], "-c") == 0 ||
 			   strcmp(argv[i], "--current-hours") == 0) {
 			if (i + 1 >= argc) {
@@ -493,44 +558,68 @@ int prompt_current_hours(double *hours)
  * Output functions
  */
 
-static void print_days_value(double days)
+static void print_double_value(double value)
 {
-	/* Check if the value is effectively an integer (X.00) */
-	double rounded = round(days);
+	char buf[32];
+	int len;
 
-	if (fabs(days - rounded) < 0.005)
-		printf("%d", (int)rounded);
-	else
-		printf("%.2f", days);
+	/* Format with 2 decimal places */
+	snprintf(buf, sizeof(buf), "%.2f", value);
+	len = strlen(buf);
+
+	/* Remove trailing zeros after decimal point */
+	while (len > 0 && buf[len - 1] == '0')
+		buf[--len] = '\0';
+
+	/* Remove trailing decimal point if no decimals remain */
+	if (len > 0 && buf[len - 1] == '.')
+		buf[--len] = '\0';
+
+	printf("%s", buf);
 }
 
 void print_results(const struct vacation_input *input,
 		   const struct vacation_result *result)
 {
-	printf("\n=== Vacation Days Calculator ===\n");
-	printf("Annual vacation days: %d\n", input->annual_days);
-	printf("Maximum accumulated days: %d\n", input->max_accum_days);
-	printf("Current accumulated hours: %.2f\n", input->current_hours);
+	int annual_hours = get_annual_hours_for_days(input->annual_days);
+	double max_accum_hours = days_to_hours(input->max_accum_days);
+	double excess_hours = days_to_hours(result->excess_days);
+
+	printf("=== Vacation Days Calculator ===\n\n");
+	printf("Annual vacation: %d hours (%d days)\n",
+	       annual_hours, input->annual_days);
+	printf("Maximum accumulation: ");
+	print_double_value(max_accum_hours);
+	printf(" hours (%d days)\n", input->max_accum_days);
+	printf("Current accumulated hours: ");
+	print_double_value(input->current_hours);
+	printf("\n");
 	printf("\n");
 	printf("Current month: %s (%d)\n",
 	       month_names[input->current_month - 1], input->current_month);
-	printf("Remaining working days this year: %d\n",
-	       result->working_days_remaining);
+	printf("Remaining working days in %d: %d\n",
+	       input->current_year, result->working_days_remaining);
 	if (input->vacation_extra > 0) {
 		printf("Extra vacation days consumption: ");
-		print_days_value(input->vacation_extra);
+		print_double_value(input->vacation_extra);
 		printf("\n");
 	}
-	printf("Remaining months (including current): %d\n",
-	       result->remaining_months);
 	printf("\n");
-	printf("Additional vacation expected by year end: ");
-	print_days_value(result->additional_days);
-	printf(" days\n");
-	printf("Total accumulated vacation expected: %d days\n",
-	       result->total_days);
-	printf("Vacation to be deducted (exceeding max): %d days\n",
-	       result->excess_days);
+	printf("Additional vacation expected by the end of %d: ", input->current_year);
+	print_double_value(result->additional_days);
+	printf(" days (");
+	print_double_value(result->additional_hours);
+	printf(" hours)\n");
+	printf("Total accumulated vacation expected by the end of %d: ", input->current_year);
+	print_double_value(result->total_hours);
+	printf(" hours (");
+	print_double_value(result->total_days);
+	printf(" days)\n");
+	printf("Vacation to be deducted at the end of %d (exceeding max): ", input->current_year);
+	print_double_value(excess_hours);
+	printf(" hours (");
+	print_double_value(result->excess_days);
+	printf(" days)\n");
 }
 
 /*
@@ -544,6 +633,7 @@ int main(int argc, char *argv[])
 	struct vacation_input input;
 	struct vacation_result result;
 	int remaining_working_days;
+	int max_accum_days;
 
 	/* Initialize and parse arguments */
 	init_vacation_args(&args);
@@ -554,6 +644,13 @@ int main(int argc, char *argv[])
 	if (validate_arguments(&args) != 0)
 		return 1;
 
+	/* Validate annual days range */
+	if (validate_annual_days(args.annual_days) != 0)
+		return 1;
+
+	/* Calculate max accumulated days based on special accum flag */
+	max_accum_days = calculate_max_accum(args.annual_days, args.special_accum);
+
 	/* Get current hours interactively if not provided */
 	if (!args.current_hours_set) {
 		if (prompt_current_hours(&args.current_hours) != 0)
@@ -562,7 +659,7 @@ int main(int argc, char *argv[])
 
 	/* Prepare calculation input */
 	input.annual_days = args.annual_days;
-	input.max_accum_days = args.max_accum_days;
+	input.max_accum_days = max_accum_days;
 	input.current_hours = args.current_hours;
 	input.current_month = get_current_month();
 	input.current_year = get_current_year();

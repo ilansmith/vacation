@@ -2,11 +2,20 @@
 #define VACATION_H
 
 /* Constants */
-#define WORK_DAY_HOURS		8.416666666
+#define WORK_DAY_HOURS		8.4
 #define MONTHS_PER_YEAR		12
 #define DEFAULT_ANNUAL_DAYS	24
 #define DEFAULT_MAX_ACCUM_DAYS	36
+#define MIN_MAX_ACCUM_DAYS	36
+#define MAX_MAX_ACCUM_DAYS	48
 #define WORKING_DAYS_PER_WEEK	5
+#define MIN_ANNUAL_DAYS		15
+#define MAX_ANNUAL_DAYS		24
+#define NUM_VALID_ANNUAL_OPTIONS 10
+
+/* Valid annual vacation options (days and corresponding hours) */
+extern const int VALID_ANNUAL_DAYS[NUM_VALID_ANNUAL_OPTIONS];
+extern const int VALID_ANNUAL_HOURS[NUM_VALID_ANNUAL_OPTIONS];
 
 /* Week start options */
 #define WEEK_START_SUNDAY	0
@@ -14,8 +23,8 @@
 
 /* Structure to hold calculation inputs */
 struct vacation_input {
-	int annual_days;	/* Must be integer */
-	int max_accum_days;	/* Must be integer */
+	int annual_days;	/* Must be integer (15-24) */
+	int max_accum_days;	/* Must be integer (36-48) */
 	double current_hours;	/* May be floating point */
 	int current_month;	/* 1-12 */
 	int current_year;	/* e.g., 2025 */
@@ -30,15 +39,14 @@ struct vacation_result {
 	double additional_hours;
 	double additional_days;
 	double total_hours;
-	int total_days;		/* Rounded to nearest integer */
-	int excess_days;	/* Integer (total_days - max_accum_days) */
+	double total_days;	/* Total accumulated days at year end */
+	double excess_days;	/* Days to be deducted (total_days - max_accum_days) */
 	int working_days_remaining;	/* Remaining working days this year */
 };
 
 /* Structure to hold parsed arguments */
 struct vacation_args {
-	int annual_days;	/* Must be integer */
-	int max_accum_days;	/* Must be integer */
+	int annual_days;	/* Must be integer (15-24) */
 	double current_hours;	/* May be floating point */
 	int annual_days_set;
 	int annual_hours_set;
@@ -46,6 +54,7 @@ struct vacation_args {
 	double vacation_extra;	/* Extra vacation days consumption */
 	int vacation_extra_set;
 	int week_start;		/* WEEK_START_SUNDAY or WEEK_START_MONDAY */
+	int special_accum;	/* If set, use special max accum calculation */
 };
 
 /*
@@ -69,13 +78,6 @@ int parse_integer(const char *str, int *value);
  * Returns: 0 on success, non-zero on error
  */
 int parse_number(const char *str, double *value);
-
-/*
- * Check if a value has half-day resolution (X or X.5 where X is integer).
- * value: the value to check
- * Returns: 1 if valid half-day resolution, 0 otherwise
- */
-int is_half_day_resolution(double value);
 
 /*
  * Get current month from system time.
@@ -171,19 +173,12 @@ double calculate_additional_hours(int remaining_months, double monthly_hours);
 double calculate_total_hours(double current_hours, double additional_hours);
 
 /*
- * Round total days to nearest integer.
- * total_days: total accumulated days (floating point)
- * Returns: rounded integer value
- */
-int round_total_days(double total_days);
-
-/*
  * Calculate excess days that will be deducted.
- * total_days: total accumulated days at year end (rounded integer)
+ * total_days: total accumulated days at year end
  * max_accum_days: maximum allowed accumulated days
  * Returns: days to be deducted (0 if under limit)
  */
-int calculate_excess_days(int total_days, int max_accum_days);
+double calculate_excess_days(double total_days, int max_accum_days);
 
 /*
  * Perform all vacation calculations.
@@ -205,6 +200,39 @@ void init_vacation_args(struct vacation_args *args);
  * Returns: 0 on success, non-zero on error
  */
 int validate_arguments(const struct vacation_args *args);
+
+/*
+ * Validate annual days are within allowed range.
+ * annual_days: annual vacation days to validate
+ * Returns: 0 on success, non-zero on error
+ */
+int validate_annual_days(int annual_days);
+
+/*
+ * Calculate maximum accumulated days based on annual days and special accum flag.
+ * Normal case: always returns 36
+ * Special accum:
+ *   For 15-17 annual days: returns 36
+ *   For 18-24 annual days: returns annual_days * 2
+ * annual_days: annual vacation days
+ * special_accum: 1 if special accumulation, 0 otherwise
+ * Returns: calculated maximum accumulated days
+ */
+int calculate_max_accum(int annual_days, int special_accum);
+
+/*
+ * Print valid annual vacation options.
+ * Shows all valid days and hours combinations.
+ */
+void print_valid_annual_options(void);
+
+/*
+ * Check if annual hours value is valid.
+ * hours: annual hours to check
+ * days_out: pointer to store the corresponding days if valid
+ * Returns: 1 if valid, 0 otherwise
+ */
+int is_valid_annual_hours(int hours, int *days_out);
 
 /*
  * Validate planned vacation days.
