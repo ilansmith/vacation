@@ -87,18 +87,20 @@
         }
 
         .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         .form-group label {
-            display: block;
-            margin-bottom: 6px;
+            flex: 0 0 320px;
+            text-align: left;
             color: #aaa;
             font-weight: 500;
         }
@@ -114,11 +116,12 @@
             padding: 0;
             margin: 0;
             appearance: auto;
+            width: 250px;
         }
 
         .label-select:focus {
             outline: none;
-            color: #76B900;
+            color: #aaa;
         }
 
         .label-select option {
@@ -127,8 +130,9 @@
         }
 
         .form-group input[type="number"],
-        .form-group select {
-            width: 100%;
+        .form-group select:not(.label-select) {
+            flex: 1;
+            max-width: 200px;
             padding: 12px;
             border: 1px solid #444;
             border-radius: 4px;
@@ -147,6 +151,17 @@
 
         .form-group input[type="number"]::placeholder {
             color: #666;
+        }
+
+        /* Hide number input spinners */
+        .form-group input[type="number"]::-webkit-outer-spin-button,
+        .form-group input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .form-group input[type="number"] {
+            -moz-appearance: textfield;
         }
 
         .checkbox-group {
@@ -228,8 +243,8 @@
         }
 
         .results-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 15px;
         }
 
@@ -298,6 +313,15 @@
             margin: 5px 0;
         }
 
+        .results-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .results-row .result-card {
+            flex: 1;
+        }
+
         .error-message {
             background: rgba(255, 82, 82, 0.1);
             border: 1px solid #ff5252;
@@ -310,6 +334,28 @@
 
         .error-message.visible {
             display: block;
+        }
+
+        .error-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        .error-table th,
+        .error-table td {
+            padding: 8px 12px;
+            text-align: center;
+            border: 1px solid #ff5252;
+        }
+
+        .error-table th {
+            background: rgba(255, 82, 82, 0.2);
+            font-weight: 600;
+        }
+
+        .error-table td {
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .usage-table {
@@ -441,59 +487,77 @@
         <!-- Usage Section -->
         <div class="section">
             <h2>Usage</h2>
-            <p>This tool calculates the number of vacation days credit an employee is expected to have at the end of the year, based on current accumulated hours, annual entitlement, and planned vacation consumption.</p>
-            
-            <p>Insert your <strong>New Balance (יתרה חדשה)</strong> as it appears in your <strong>latest pay slip</strong> to calculate your expected excess vacation days at the end of the year.</p>
-            
-            <p>Make sure that your <strong>Annual Allowance (מכסה שנתית)</strong> is correctly entered (either in days, or in hours - as it appears in the pay slip):</p>
+            <p>This tool calculates the number of vacation days credit you are expected to have at the end of the year.</p>
+            <br>
+            <p>The calculation is based on your <strong>Annual Allowance (מכסה שנתית)</strong> and <strong>Current Accumulation (יתרה חדשה)</strong> as they appear in your latest pay slip (<span id="paySlipMonth1"></span>). For example:</p>
             
             <div class="payslip-image">
-                <img src="payslip_example.png" alt="Pay slip example showing New Balance (יתרה חדשה)">
+                <img src="payslip_example.png" alt="Pay slip example showing Annual Allowance (מכסה שנתית) and New Balance (יתרה חדשה)">
             </div>
             
-            <p>In the <strong>Extra Vacation Days Consumption</strong> field you should sum up vacation days which are not yet included in the latest pay slip. This consists of:</p>
+            <p>It also depends on your maximum allowed accumulation and should take into account any extra vacation consumed or planned which is not reflected in your latest pay slip (<span id="paySlipMonth2"></span>).</p>
+            
+            <p>Such vacation consists of:</p>
             <ul>
                 <li>Any vacation days taken during the previous month (<span id="prevMonthName"></span>)</li>
-                <li>Any vacation days taken during the current month (<span id="currMonthName"></span>)</li>
+                <li>Any vacation days taken during the current month (<span id="currMonthName"></span>) up to and including today</li>
                 <li>Any planned vacation days expected to be taken from now on until the end of the year</li>
             </ul>
 
-            <p>The latest pay slip and extra vacation information are available on the <a href="https://nvidia.net.hilan.co.il/login" target="_blank">Hilan site</a> (make sure to update your attendance).</p>
+            <br>
+            <p>In some cases, you may be entitled to accumulate more than the standard 36 days by the end of the year. Check <a href="https://www.kolzchut.org.il/he/%D7%A6%D7%91%D7%99%D7%A8%D7%AA_%D7%99%D7%9E%D7%99_%D7%97%D7%95%D7%A4%D7%A9%D7%94_%D7%9C%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D_%D7%A9%D7%9C%D7%90_%D7%99%D7%9B%D7%9C%D7%95_%D7%9C%D7%A0%D7%A6%D7%9C_%D7%90%D7%AA_%D7%94%D7%99%D7%9E%D7%99%D7%9D_%D7%91%D7%92%D7%9C%D7%9C_%D7%9E%D7%9C%D7%97%D7%9E%D7%AA_%D7%97%D7%A8%D7%91%D7%95%D7%AA_%D7%91%D7%A8%D7%96%D7%9C_%D7%90%D7%95_%D7%94%D7%9E%D7%9C%D7%97%D7%9E%D7%94_%D7%9E%D7%95%D7%9C_%D7%90%D7%99%D7%A8%D7%90%D7%9F_(%D7%9E%D7%9C%D7%97%D7%9E%D7%AA_%D7%94%D7%AA%D7%A7%D7%95%D7%9E%D7%94)" target="_blank">here</a> to see if you meet the criteria for extra accumulation days. If indeed you're entitled to extra accumulation days, set the Non Standard Accumulation Allowance checkbox, and don't forget to update the <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=FT0IQ3NywUC32znv2czBekylSr-AHgVLkfCft-h2OjhUMlZUTUJYWVNZS05BNTFFMVdHV1lPUFdXVy4u&lang=he-IL" target="_blank">payroll team</a>.</p>
 
-            <div class="note">
-                <strong>Note:</strong> Extra vacation days consumption must be in half-day increments (0, 0.5, 1, 1.5, 2, etc.) and cannot exceed the number of working days from the start of the previous month.
-            </div>
+            <br>
+            <p>The latest pay slip is available on the <a href="https://nvidia.net.hilan.co.il/login" target="_blank">Hilan site</a> (make sure to update your attendance).</p>
 
-            <p>A work day is <strong>8.417 hours</strong>.</p>
+            <p>A single workday is evaluated as <strong>8.4 hours</strong>.</p>
         </div>
 
         <!-- Calculator Section -->
         <div class="section">
             <h2>Calculator</h2>
             <form id="calculatorForm">
+                <h3><span id="paySlipMonth"></span> Pay Slip Information</h3>
                 <div class="form-grid">
                     <div class="form-group">
                         <label>
                             <select id="annualType" name="annualType" class="label-select">
-                                <option value="days" selected>Annual Vacation Days</option>
-                                <option value="hours">Annual Vacation Hours</option>
+                                <option value="hours" selected>Annual Vacation Hours *</option>
+                                <option value="days">Annual Vacation Days *</option>
                             </select>
                         </label>
-                        <input type="number" id="annualValue" name="annualValue" value="24" min="1" max="3000" step="1">
-                    </div>
-                    <div class="form-group">
-                        <label for="maxAccum">Maximum Accumulated Days</label>
-                        <input type="number" id="maxAccum" name="maxAccum" value="36" min="1" max="365" step="1">
+                        <input type="number" id="annualValue" name="annualValue" placeholder="Annual allowance" min="126" max="202" step="1" required>
                     </div>
                     <div class="form-group">
                         <label for="currentHours">Current Accumulated Hours *</label>
-                        <input type="number" id="currentHours" name="currentHours" placeholder="Enter current hours" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="vacationDays">Extra Vacation Days Consumption</label>
-                        <input type="number" id="vacationDays" name="vacationDays" value="0" min="0" max="365" step="0.5">
+                        <input type="number" id="currentHours" name="currentHours" placeholder="Current accumulation" step="0.01" required>
                     </div>
                 </div>
+
+                <h3>Vacation days not reflected in the <span id="notReflectedMonth"></span> pay slip</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="prevMonthVacation"><span id="prevMonthLabel"></span> vacation days</label>
+                        <input type="number" id="prevMonthVacation" name="prevMonthVacation" value="0" min="0" max="31" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="currMonthVacation"><span id="currMonthLabel"></span> vacation days (up to today)</label>
+                        <input type="number" id="currMonthVacation" name="currMonthVacation" value="0" min="0" max="31" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="plannedVacation">Planned vacation days (rest of year)</label>
+                        <input type="number" id="plannedVacation" name="plannedVacation" value="0" min="0" max="365" step="0.01">
+                    </div>
+                </div>
+
+                <br>
+                <div class="checkbox-group" style="margin-top: 15px;">
+                    <label for="specialCase" class="checkbox-label">
+                        <input type="checkbox" id="specialCase" name="specialCase">
+                        Non Standard Accumulation Allowance
+                    </label>
+                </div>
+
                 <div class="btn-container">
                     <button type="submit" class="btn btn-primary">Calculate</button>
                 </div>
@@ -514,8 +578,16 @@
 
     <script>
         // Constants
-        const WORK_DAY_HOURS = 8.416666666;
+        const WORK_DAY_HOURS = 8.4;
         const MONTHS_PER_YEAR = 12;
+        const MIN_ANNUAL_DAYS = 15;
+        const MAX_ANNUAL_DAYS = 24;
+        const MIN_MAX_ACCUM_DAYS = 36;
+        const MAX_MAX_ACCUM_DAYS = 48;
+
+        // Valid annual vacation options
+        const VALID_ANNUAL_DAYS = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+        const VALID_ANNUAL_HOURS = [126, 135, 143, 152, 160, 168, 177, 185, 194, 202];
 
         const monthNames = [
             "January", "February", "March", "April", "May", "June",
@@ -604,19 +676,56 @@
             return totalWorkingDays;
         }
 
-        function isHalfDayResolution(value) {
-            if (value < 0) return false;
-            const fractional = value - Math.floor(value);
-            return (Math.abs(fractional) < 0.001 || Math.abs(fractional - 0.5) < 0.001);
-        }
-
         function calculateRemainingMonths(month) {
             return MONTHS_PER_YEAR - month + 1;
         }
 
-        function showError(message) {
+        function calculateMaxAccum(annualDays, specialCase) {
+            // Normal case: always 36
+            if (!specialCase) {
+                return MIN_MAX_ACCUM_DAYS;
+            }
+            // Special case: 15-17 days -> 36, 18-24 days -> annual_days * 2
+            if (annualDays < 18) {
+                return MIN_MAX_ACCUM_DAYS;
+            }
+            return annualDays * 2;
+        }
+
+        function isValidAnnualDays(days) {
+            return VALID_ANNUAL_DAYS.includes(days);
+        }
+
+        function isValidAnnualHours(hours) {
+            return VALID_ANNUAL_HOURS.includes(hours);
+        }
+
+        function hoursToAnnualDays(hours) {
+            const index = VALID_ANNUAL_HOURS.indexOf(hours);
+            return index !== -1 ? VALID_ANNUAL_DAYS[index] : null;
+        }
+
+        function getValidOptionsMessage(invalidValue, isHours) {
+            const unit = isHours ? 'hours' : 'days';
+            let html = `<strong>Invalid annual vacation ${unit} (${invalidValue}).</strong><br><br>`;
+            html += `<strong>Valid annual vacation options:</strong>`;
+            html += `<table class="error-table">`;
+            html += `<tr><th>Days</th><th>Hours</th></tr>`;
+            for (let i = 0; i < VALID_ANNUAL_DAYS.length; i++) {
+                html += `<tr><td>${VALID_ANNUAL_DAYS[i]}</td><td>${VALID_ANNUAL_HOURS[i]}</td></tr>`;
+            }
+            html += `</table>`;
+            html += `Please consult your pay slip for your annual vacation allowance.`;
+            return html;
+        }
+
+        function showError(message, isHtml = false) {
             const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
+            if (isHtml) {
+                errorDiv.innerHTML = message;
+            } else {
+                errorDiv.textContent = message;
+            }
             errorDiv.classList.add('visible');
             document.getElementById('outputSection').classList.remove('visible');
         }
@@ -625,12 +734,21 @@
             document.getElementById('errorMessage').classList.remove('visible');
         }
 
-        function formatDays(value) {
+        function formatNumber(value) {
             const rounded = Math.round(value);
             if (Math.abs(value - rounded) < 0.005) {
                 return rounded.toString();
             }
-            return value.toFixed(2);
+            // Remove trailing zeros
+            return parseFloat(value.toFixed(2)).toString();
+        }
+
+        function formatDays(value) {
+            return formatNumber(value);
+        }
+
+        function formatHours(value) {
+            return formatNumber(value);
         }
 
         function calculate(annualDays, maxAccumDays, currentHours, vacationPlanned, weekStartSunday) {
@@ -644,9 +762,6 @@
             // Validate vacation days
             if (vacationPlanned < 0) {
                 throw new Error("Extra vacation days consumption cannot be negative.");
-            }
-            if (!isHalfDayResolution(vacationPlanned)) {
-                throw new Error("Extra vacation days consumption must be in half-day increments (e.g., 1, 1.5, 2, 2.5).");
             }
             if (vacationPlanned > maxWorkingDays) {
                 throw new Error(`Extra vacation days consumption (${vacationPlanned}) cannot exceed working days from start of previous month (${maxWorkingDays}).`);
@@ -666,17 +781,23 @@
             let totalHours = currentHours + additionalHours;
             totalHours -= daysToHours(vacationPlanned);
 
-            // Round total days
-            const totalDays = Math.round(hoursToDays(totalHours));
+            // Calculate total days (no rounding)
+            const totalDays = hoursToDays(totalHours);
 
             // Calculate excess
             const excessDays = Math.max(0, totalDays - maxAccumDays);
+            const excessHours = daysToHours(excessDays);
+            const maxAccumHours = daysToHours(maxAccumDays);
 
             return {
                 maxAccumDays,
+                maxAccumHours,
                 additionalDays,
+                additionalHours,
+                totalHours,
                 totalDays,
-                excessDays
+                excessDays,
+                excessHours
             };
         }
 
@@ -684,34 +805,53 @@
             const output = document.getElementById('outputContent');
             let html = '';
 
-            // Results row
+            // First row: Maximum allowed accumulation and Additional vacation credit
+            html += `<div class="results-row">`;
+            
+            // Maximum allowed accumulation
+            const maxAccumValue = `${formatHours(results.maxAccumHours)} hours / ${results.maxAccumDays} days`;
+            html += `<div class="result-card neutral">
+                <div class="result-label">Maximum allowed accumulation</div>
+                <div class="result-value">${maxAccumValue}</div>
+            </div>`;
+
+            // Additional vacation credit
+            const additionalValue = `${formatHours(results.additionalHours)} hours / ${formatDays(results.additionalDays)} days`;
             html += `<div class="result-card neutral">
                 <div class="result-label">Additional vacation credit due this year</div>
-                <div class="result-value">${formatDays(results.additionalDays)} days</div>
+                <div class="result-value">${additionalValue}</div>
             </div>`;
+            
+            html += `</div>`;
+
+            // Second row: Accumulated vacation at end of year and Vacation to be deducted
+            const accumulatedValue = `${formatHours(results.totalHours)} hours / ${formatDays(results.totalDays)} days`;
+            html += `<div class="results-row">`;
             if (results.totalDays > results.maxAccumDays) {
                 html += `<div class="result-card warning">
                     <div class="result-label">Accumulated vacation at end of year</div>
-                    <div class="result-value">${results.totalDays} days</div>
+                    <div class="result-value">${accumulatedValue}</div>
                 </div>`;
             } else {
                 html += `<div class="result-card success">
                     <div class="result-label">Accumulated vacation at end of year</div>
-                    <div class="result-value">${results.totalDays} days</div>
+                    <div class="result-value">${accumulatedValue}</div>
                 </div>`;
             }
             
+            const excessValue = `${formatHours(results.excessHours)} hours / ${formatDays(results.excessDays)} days`;
             if (results.excessDays > 0) {
                 html += `<div class="result-card warning">
                     <div class="result-label">Vacation to be deducted</div>
-                    <div class="result-value">${results.excessDays} days</div>
+                    <div class="result-value">${excessValue}</div>
                 </div>`;
             } else {
                 html += `<div class="result-card success">
                     <div class="result-label">Vacation to be deducted</div>
-                    <div class="result-value">0 days</div>
+                    <div class="result-value">0 hours / 0 days</div>
                 </div>`;
             }
+            html += `</div>`;
 
             output.innerHTML = html;
             document.getElementById('outputSection').classList.add('visible');
@@ -720,16 +860,41 @@
         // Annual type toggle handler - convert between days and hours
         document.getElementById('annualType').addEventListener('change', function(e) {
             const annualValueInput = document.getElementById('annualValue');
-            const currentValue = parseFloat(annualValueInput.value) || 0;
+            const currentValueStr = annualValueInput.value;
             
+            // Update min/max regardless of value
             if (e.target.value === 'hours') {
-                // Converting from days to hours
-                const hoursValue = Math.round(daysToHours(currentValue));
-                annualValueInput.value = hoursValue;
+                annualValueInput.step = "1";
+                annualValueInput.min = VALID_ANNUAL_HOURS[0];
+                annualValueInput.max = VALID_ANNUAL_HOURS[VALID_ANNUAL_HOURS.length - 1];
+                annualValueInput.placeholder = "Annual allowance";
             } else {
-                // Converting from hours to days
-                const daysValue = Math.round(hoursToDays(currentValue));
-                annualValueInput.value = daysValue;
+                annualValueInput.step = "1";
+                annualValueInput.min = VALID_ANNUAL_DAYS[0];
+                annualValueInput.max = VALID_ANNUAL_DAYS[VALID_ANNUAL_DAYS.length - 1];
+                annualValueInput.placeholder = "Annual allowance";
+            }
+            
+            // Only convert if there's a value
+            if (currentValueStr !== '') {
+                const currentValue = parseInt(currentValueStr) || 0;
+                if (e.target.value === 'hours') {
+                    // Converting from days to hours - find corresponding hours
+                    const dayIndex = VALID_ANNUAL_DAYS.indexOf(currentValue);
+                    if (dayIndex !== -1) {
+                        annualValueInput.value = VALID_ANNUAL_HOURS[dayIndex];
+                    } else {
+                        annualValueInput.value = '';
+                    }
+                } else {
+                    // Converting from hours to days - find corresponding days
+                    const hourIndex = VALID_ANNUAL_HOURS.indexOf(currentValue);
+                    if (hourIndex !== -1) {
+                        annualValueInput.value = VALID_ANNUAL_DAYS[hourIndex];
+                    } else {
+                        annualValueInput.value = '';
+                    }
+                }
             }
         });
 
@@ -739,35 +904,67 @@
             hideError();
 
             const annualType = document.getElementById('annualType').value;
-            const annualValue = parseInt(document.getElementById('annualValue').value);
-            const maxAccum = parseInt(document.getElementById('maxAccum').value);
+            const annualValue = parseFloat(document.getElementById('annualValue').value);
+            const specialCase = document.getElementById('specialCase').checked;
             const currentHours = parseFloat(document.getElementById('currentHours').value);
-            const vacationDays = parseFloat(document.getElementById('vacationDays').value) || 0;
+            const prevMonthInput = document.getElementById('prevMonthVacation');
+            const currMonthInput = document.getElementById('currMonthVacation');
+            const plannedInput = document.getElementById('plannedVacation');
+            
+            // Fill empty fields with 0
+            if (prevMonthInput.value === '') prevMonthInput.value = '0';
+            if (currMonthInput.value === '') currMonthInput.value = '0';
+            if (plannedInput.value === '') plannedInput.value = '0';
+            
+            const prevMonthVacation = parseFloat(prevMonthInput.value) || 0;
+            const currMonthVacation = parseFloat(currMonthInput.value) || 0;
+            const plannedVacation = parseFloat(plannedInput.value) || 0;
+            const vacationDays = prevMonthVacation + currMonthVacation + plannedVacation;
             const weekStartSunday = true; // Default: Sunday start (Sun-Thu working)
 
             // Validate inputs
+            if (isNaN(annualValue) || annualValue < 1) {
+                showError(annualType === 'days' ? "Please enter your annual vacation days." : "Please enter your annual vacation hours.");
+                return;
+            }
+
             if (isNaN(currentHours)) {
                 showError("Please enter your current accumulated hours.");
                 return;
             }
 
-            if (!Number.isInteger(annualValue) || annualValue < 1) {
-                showError(annualType === 'days' ? "Annual days must be a positive integer." : "Annual hours must be a positive integer.");
+            // Validate vacation days fields
+            if (prevMonthVacation < 0 || currMonthVacation < 0 || plannedVacation < 0) {
+                showError("Vacation days cannot be negative.");
                 return;
             }
 
-            if (!Number.isInteger(maxAccum) || maxAccum < 1) {
-                showError("Maximum accumulated days must be a positive integer.");
-                return;
-            }
-
-            // Convert hours to days if needed
+            // Convert hours to days if needed and validate against valid options
             let annualDays;
             if (annualType === 'hours') {
-                annualDays = Math.round(hoursToDays(annualValue));
+                if (!Number.isInteger(annualValue)) {
+                    showError("Annual vacation hours must be an integer.");
+                    return;
+                }
+                if (!isValidAnnualHours(annualValue)) {
+                    showError(getValidOptionsMessage(annualValue, true), true);
+                    return;
+                }
+                annualDays = hoursToAnnualDays(annualValue);
             } else {
+                if (!Number.isInteger(annualValue)) {
+                    showError("Annual vacation days must be an integer.");
+                    return;
+                }
+                if (!isValidAnnualDays(annualValue)) {
+                    showError(getValidOptionsMessage(annualValue, false), true);
+                    return;
+                }
                 annualDays = annualValue;
             }
+
+            // Calculate max accumulated days based on special case
+            const maxAccum = calculateMaxAccum(annualDays, specialCase);
 
             try {
                 const results = calculate(annualDays, maxAccum, currentHours, vacationDays, weekStartSunday);
@@ -785,8 +982,15 @@
             
             document.getElementById('currMonthName').textContent = monthNames[currentMonth];
             document.getElementById('prevMonthName').textContent = monthNames[prevMonth];
+            document.getElementById('currMonthLabel').textContent = monthNames[currentMonth];
+            document.getElementById('prevMonthLabel').textContent = monthNames[prevMonth];
+            document.getElementById('paySlipMonth').textContent = monthNames[prevMonth];
+            document.getElementById('paySlipMonth1').textContent = monthNames[prevMonth];
+            document.getElementById('paySlipMonth2').textContent = monthNames[prevMonth];
+            document.getElementById('notReflectedMonth').textContent = monthNames[prevMonth];
         })();
     </script>
 </body>
 </html>
+
 
